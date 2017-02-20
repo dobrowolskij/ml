@@ -1,18 +1,23 @@
 import numpy as np
 import random
 
+# maybe detect it later from data
 labels = {"Iris-setosa": [1, 0, 0],
           "Iris-versicolor": [0, 1, 0],
           "Iris-virginica": [0, 0, 1]}
+label_count = 3
 
 data = None
 data_labels = None
 training_data = None
 test_data = None
 validation_data = None
+weights = []
+number_of_hidden_layers = 2
+hidden_layers_neuron_count = (4, 4)
 
 
-def normalize_and_scale_data(data):
+def normalize_and_scale_data():
     means = np.mean(data, axis=0, dtype=np.float64)
 
     std_deviations = np.subtract(np.amax(data, axis=0), np.amin(data, axis=0))
@@ -31,10 +36,22 @@ def generate_data_sets():
     validation_data = indices[-int(0.2 * data_count):]
 
 
+def initialize_network():
+    weights.append(np.ones((data.shape[1] + 1, data.shape[1]), dtype=np.float64))
+
+    previous_layer_neuron_count = data.shape[1]
+    for hidden_layer in range(number_of_hidden_layers):
+        weights.append(np.ones((previous_layer_neuron_count + 1, hidden_layers_neuron_count[hidden_layer]), dtype=np.float64))
+        previous_layer_neuron_count = hidden_layers_neuron_count[hidden_layer]
+
+    weights.append(np.ones((previous_layer_neuron_count, label_count), dtype=np.float64))
+
+
 def run():
     read_data("iris.data")
-    normalize_and_scale_data(data)
+    normalize_and_scale_data()
     generate_data_sets()
+    initialize_network()
 
 
 def read_data(data_file):
