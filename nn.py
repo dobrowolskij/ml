@@ -12,7 +12,7 @@ data_labels = None
 training_data = None
 test_data = None
 validation_data = None
-weights = []
+layers = []
 number_of_hidden_layers = 2
 hidden_layers_neuron_count = (4, 4)
 
@@ -37,14 +37,29 @@ def generate_data_sets():
 
 
 def initialize_network():
-    weights.append(np.ones((data.shape[1] + 1, data.shape[1]), dtype=np.float64))
+    layers.append(np.matrix(np.random.random_sample((data.shape[1] + 1, data.shape[1]))))
 
     previous_layer_neuron_count = data.shape[1]
     for hidden_layer in range(number_of_hidden_layers):
-        weights.append(np.ones((previous_layer_neuron_count + 1, hidden_layers_neuron_count[hidden_layer]), dtype=np.float64))
+        layers.append(np.matrix(np.random.random_sample((previous_layer_neuron_count + 1, hidden_layers_neuron_count[hidden_layer]))))
         previous_layer_neuron_count = hidden_layers_neuron_count[hidden_layer]
 
-    weights.append(np.ones((previous_layer_neuron_count, label_count), dtype=np.float64))
+    layers.append(np.matrix(np.random.random_sample((previous_layer_neuron_count + 1, label_count))))
+
+
+def feed_forward(data_row):
+    internal_result = np.copy(data_row)
+    for index, layer in enumerate(layers):
+        data_row_with_bias = np.matrix(np.insert(internal_result, 0, 1, axis=0))
+        internal_result = (data_row_with_bias * layer).A1
+    return internal_result
+
+
+def learn_network():
+    for training_row in training_data[1:10]:
+        answer = feed_forward(data[training_row])
+        expected_answer = data_labels[training_row]
+        print(training_row, expected_answer, answer)
 
 
 def run():
@@ -52,6 +67,7 @@ def run():
     normalize_and_scale_data()
     generate_data_sets()
     initialize_network()
+    learn_network()
 
 
 def read_data(data_file):
