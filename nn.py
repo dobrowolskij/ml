@@ -1,6 +1,7 @@
 import numpy as np
 import random
 import math
+import sys
 
 # maybe detect it later from data
 labels = {"Iris-setosa": np.array([1, 0, 0]),
@@ -15,7 +16,7 @@ test_data = []
 validation_data = []
 layers = []
 W = []
-learning_rate = 0.3
+learning_rate = 0.03
 hidden_layers_neuron_count = (5, 5)
 number_of_hidden_layers = len(hidden_layers_neuron_count)
 logistic_function = lambda x: 1 / (1 + pow(math.e, -x))
@@ -72,14 +73,40 @@ def update_weights(D, input_data, Z):
 
 
 def learn_network():
-    for training_row in training_data[1:2]:
-        for i in range(100):
-            training_matrix = np.matrix(data[training_row])
-            S, Z, F = feed_forward(training_matrix)
-            expected_answer = data_labels[training_row]
-            D = back_propagation(Z, F, expected_answer)
-            update_weights(D, training_matrix, Z)
-            print(Z[-1], expected_answer)
+    random.shuffle(training_data)
+    for training_row in training_data:
+        training_data_matrix = np.matrix(data[training_row])
+        S, Z, F = feed_forward(training_data_matrix)
+        expected_answer = data_labels[training_row]
+        D = back_propagation(Z, F, expected_answer)
+        update_weights(D, training_data_matrix, Z)
+
+
+def evaluate_training_data():
+    return evaluate_data(training_data)
+
+
+def evaluate_test_data():
+    return evaluate_data(test_data)
+
+
+def evaluate_validation_data():
+    return evaluate_data(validation_data)
+
+
+def evaluate_data(data_set):
+    error = 0.0
+    correct_answers = 0
+    for data_row in data_set:
+        data_matrix = np.matrix(data[data_row])
+        _, Z, _ = feed_forward(data_matrix)
+        expected_answer = data_labels[data_row]
+        difference = (Z[-1] - expected_answer).A1
+        row_error = sum(list(map(lambda x: pow(x, 2), difference)))
+        error += row_error
+        if is_correct_answer(difference):
+            correct_answers += 1
+    return error, correct_answers/len(data_set)
 
 
 def run():
@@ -87,7 +114,18 @@ def run():
     normalize_and_scale_data()
     generate_data_sets()
     initialize_network()
-    learn_network()
+    for iteration in range(5000):
+        learn_network()
+        if iteration % 100 == 0:
+            training_error, training_correct_answers = evaluate_training_data()
+            test_error, test_correct_answers = evaluate_test_data()
+            validation_error, validation_correct_answers = evaluate_validation_data()
+            print("Iteration {0} error: {1:0.5f} ({2:0.2f}%) {3:0.5f} ({4:0.2f}%) {5:0.5f} ({6:0.2f}%)".format(iteration, training_error,
+                                                                       training_correct_answers,
+                                                                       test_error, test_correct_answers,
+                                                                       validation_error, validation_correct_answers
+                                                                       ))
+            sys.stdout.flush()
 
 
 def get_initialized_deltas():
@@ -141,6 +179,10 @@ def create_weights_for_output_layer(last_hidden_layer_neuron_count, label_count)
 
 def pm(matrix):
     print(*matrix, sep="\n")
+
+
+def is_correct_answer(difference):
+    return all(list(map(lambda x: x < 0.05, difference)))
 
 
 if __name__ == "__main__":
