@@ -3,9 +3,9 @@ import random
 import math
 
 # maybe detect it later from data
-labels = {"Iris-setosa": [1, 0, 0],
-          "Iris-versicolor": [0, 1, 0],
-          "Iris-virginica": [0, 0, 1]}
+labels = {"Iris-setosa": np.array([1, 0, 0]),
+          "Iris-versicolor": np.array([0, 1, 0]),
+          "Iris-virginica": np.array([0, 0, 1])}
 label_count = 3
 
 data = []
@@ -14,10 +14,98 @@ training_data = []
 test_data = []
 validation_data = []
 layers = []
-number_of_hidden_layers = 2
-hidden_layers_neuron_count = (4, 4)
+W = []
+learning_rate = 0.3
+hidden_layers_neuron_count = (5, 5)
+number_of_hidden_layers = len(hidden_layers_neuron_count)
 logistic_function = lambda x: 1 / (1 + pow(math.e, -x))
+logistic_function_derivative = lambda x: logistic_function(x) * logistic_function(-x)
 activation_function = logistic_function
+derivative_function = logistic_function_derivative
+
+
+def initialize_network():
+    bias = 1
+    W.append(create_weights_for_input_layer(data.shape[1] + bias, hidden_layers_neuron_count[0]))
+
+    for hidden_layer in range(number_of_hidden_layers - 1):
+        W.append(create_weights_for_layer(hidden_layers_neuron_count[hidden_layer] + bias,
+                                          hidden_layers_neuron_count[hidden_layer + 1]))
+
+    W.append(create_weights_for_output_layer(hidden_layers_neuron_count[-1] + bias, label_count))
+
+
+def add_biases(matrix_to_enhance):
+    biases = np.matrix([1])
+    return np.concatenate((biases.T, matrix_to_enhance), axis=1)
+
+
+def feed_forward(input_data):
+    Z = []
+    S = []
+    F = []
+    for weights in W:
+        s = add_biases(input_data if not Z else Z[-1]) * weights
+        S.append(s)
+        Z.append(np.vectorize(activation_function)(s))
+        F.append(np.vectorize(derivative_function)(-s))
+    return S, Z, F
+
+
+def get_deltas(D, index):
+    return D[index] if index + 1 == len(D) else D[index][1:]
+
+
+def back_propagation(Z, F, expected_answer):
+    D = get_initialized_deltas()
+    D[-1] = (Z[-1] - expected_answer).transpose()
+    for index, s in reversed(list(enumerate(zip(F[:-1], D[:-1])))):
+        D[index] = np.matrix(add_biases(F[index]).A1 * (W[index + 1] * get_deltas(D, index + 1)).A1).transpose()
+    return D
+
+
+def update_weights(D, input_data, Z):
+    for index in range(len(W)):
+        weight_delta = (D[index][1:] if index + 1 < len(W) else D[index]) * add_biases(
+            Z[index - 1] if index > 0 else input_data)
+        W[index] += -learning_rate * weight_delta.transpose()
+
+
+def learn_network():
+    for training_row in training_data[1:2]:
+        for i in range(100):
+            training_matrix = np.matrix(data[training_row])
+            S, Z, F = feed_forward(training_matrix)
+            expected_answer = data_labels[training_row]
+            D = back_propagation(Z, F, expected_answer)
+            update_weights(D, training_matrix, Z)
+            print(Z[-1], expected_answer)
+
+
+def run():
+    read_data("iris.data")
+    normalize_and_scale_data()
+    generate_data_sets()
+    initialize_network()
+    learn_network()
+
+
+def get_initialized_deltas():
+    D = []
+    for weights in W[:-1]:
+        D.append(np.matrix(np.zeros((weights.shape[1] + 1, 1))))
+    D.append(np.matrix(np.zeros((W[-1].shape[1], 1))))
+    return D
+
+
+def read_data(data_file):
+    global data
+    f = open(data_file, "r")
+    for index, line in enumerate(f):
+        split_line = line.replace("\n", "").split(",")
+        data.append(split_line[:-1])
+        data_labels[index] = labels[split_line[-1:][0]]
+    data = np.array(data, dtype=np.float64)
 
 
 def normalize_and_scale_data():
@@ -39,50 +127,20 @@ def generate_data_sets():
     validation_data = indices[-int(0.2 * data_count):]
 
 
-def initialize_network():
-    layers.append(np.matrix(np.random.random_sample((data.shape[1] + 1, data.shape[1])) - 0.5))
-
-    previous_layer_neuron_count = data.shape[1]
-    for hidden_layer in range(number_of_hidden_layers):
-        layers.append(np.matrix(
-            np.random.random_sample((previous_layer_neuron_count + 1, hidden_layers_neuron_count[hidden_layer])) - 0.5))
-        previous_layer_neuron_count = hidden_layers_neuron_count[hidden_layer]
-
-    layers.append(np.matrix(np.random.random_sample((previous_layer_neuron_count + 1, label_count)) - 0.5))
+def create_weights_for_input_layer(feature_count, first_hidden_layer_neuron_count):
+    return create_weights_for_layer(feature_count, first_hidden_layer_neuron_count)
 
 
-def feed_forward(data_row):
-    internal_result = np.copy(data_row)
-    for index, layer in enumerate(layers):
-        data_row_with_bias = np.matrix(np.insert(internal_result, 0, 1, axis=0))
-        internal_result = np.vectorize(activation_function)(data_row_with_bias * layer).A1
-
-    return internal_result
+def create_weights_for_layer(rows_count, columns_count):
+    return np.matrix(np.ones((rows_count, columns_count)))
 
 
-def learn_network():
-    for training_row in training_data[1:2]:
-        answer = feed_forward(data[training_row])
-        expected_answer = data_labels[training_row]
-        print(training_row, expected_answer, answer)
+def create_weights_for_output_layer(last_hidden_layer_neuron_count, label_count):
+    return create_weights_for_layer(last_hidden_layer_neuron_count, label_count)
 
 
-def run():
-    read_data("iris.data")
-    normalize_and_scale_data()
-    generate_data_sets()
-    initialize_network()
-    learn_network()
-
-
-def read_data(data_file):
-    global data
-    f = open(data_file, "r")
-    for index, line in enumerate(f):
-        split_line = line.replace("\n", "").split(",")
-        data.append(split_line[:-1])
-        data_labels[index] = labels[split_line[-1:][0]]
-    data = np.array(data, dtype=np.float64)
+def pm(matrix):
+    print(*matrix, sep="\n")
 
 
 if __name__ == "__main__":
