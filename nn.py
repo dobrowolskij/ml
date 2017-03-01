@@ -16,8 +16,8 @@ test_data = []
 validation_data = []
 layers = []
 W = []
-learning_rate = 0.03
-hidden_layers_neuron_count = (5, 5)
+learning_rate = 0.001
+hidden_layers_neuron_count = (15, 15, 15)
 number_of_hidden_layers = len(hidden_layers_neuron_count)
 logistic_function = lambda x: 1 / (1 + pow(math.e, -x))
 logistic_function_derivative = lambda x: logistic_function(x) * logistic_function(-x)
@@ -74,7 +74,7 @@ def update_weights(D, input_data, Z):
 
 def learn_network():
     random.shuffle(training_data)
-    for training_row in training_data:
+    for training_row in training_data[:]:
         training_data_matrix = np.matrix(data[training_row])
         S, Z, F = feed_forward(training_data_matrix)
         expected_answer = data_labels[training_row]
@@ -106,7 +106,7 @@ def evaluate_data(data_set):
         error += row_error
         if is_correct_answer(difference):
             correct_answers += 1
-    return error, correct_answers/len(data_set)
+    return error, (correct_answers / len(data_set)) * 100
 
 
 def run():
@@ -114,17 +114,18 @@ def run():
     normalize_and_scale_data()
     generate_data_sets()
     initialize_network()
-    for iteration in range(5000):
+    for iteration in range(500000):
         learn_network()
         if iteration % 100 == 0:
             training_error, training_correct_answers = evaluate_training_data()
-            test_error, test_correct_answers = evaluate_test_data()
             validation_error, validation_correct_answers = evaluate_validation_data()
-            print("Iteration {0} error: {1:0.5f} ({2:0.2f}%) {3:0.5f} ({4:0.2f}%) {5:0.5f} ({6:0.2f}%)".format(iteration, training_error,
-                                                                       training_correct_answers,
-                                                                       test_error, test_correct_answers,
-                                                                       validation_error, validation_correct_answers
-                                                                       ))
+            print(
+                "Iteration {0} error: {1:0.5f} ({2:0.2f}%) {3:0.5f} ({4:0.2f}%)".format(iteration,
+                                                                                                             training_error,
+                                                                                                             training_correct_answers,
+                                                                                                             validation_error,
+                                                                                                             validation_correct_answers
+                                                                                                             ))
             sys.stdout.flush()
 
 
@@ -160,9 +161,9 @@ def generate_data_sets():
     data_count = data.shape[0]
     indices = [i for i in range(data_count)]
     random.shuffle(indices)
-    training_data = indices[0:int(0.6 * data_count)]
-    test_data = indices[int(0.6 * data_count):int(0.6 * data_count) + int(0.2 * data_count)]
-    validation_data = indices[-int(0.2 * data_count):]
+    training_data = indices[0:int(0.7 * data_count)]
+    # test_data = indices[int(0.6 * data_count):int(0.6 * data_count) + int(0.2 * data_count)]
+    validation_data = indices[-int(0.3 * data_count):]
 
 
 def create_weights_for_input_layer(feature_count, first_hidden_layer_neuron_count):
@@ -170,7 +171,7 @@ def create_weights_for_input_layer(feature_count, first_hidden_layer_neuron_coun
 
 
 def create_weights_for_layer(rows_count, columns_count):
-    return np.matrix(np.ones((rows_count, columns_count)))
+    return np.matrix(np.random.rand(rows_count, columns_count)) - 0.5
 
 
 def create_weights_for_output_layer(last_hidden_layer_neuron_count, label_count):
