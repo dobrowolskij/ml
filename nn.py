@@ -1,19 +1,9 @@
 import numpy as np
-import random
 import math
 import sys
+import random
+import common_utils as cu
 
-# maybe detect it later from data
-labels = {"Iris-setosa": np.array([1, 0, 0]),
-          "Iris-versicolor": np.array([0, 1, 0]),
-          "Iris-virginica": np.array([0, 0, 1])}
-label_count = 3
-
-data = []
-data_labels = dict()
-training_data = []
-test_data = []
-validation_data = []
 layers = []
 W = []
 learning_rate = 0.001
@@ -27,13 +17,13 @@ derivative_function = logistic_function_derivative
 
 def initialize_network():
     bias = 1
-    W.append(create_weights_for_input_layer(data.shape[1] + bias, hidden_layers_neuron_count[0]))
+    W.append(create_weights_for_input_layer(cu.data.shape[1] + bias, hidden_layers_neuron_count[0]))
 
     for hidden_layer in range(number_of_hidden_layers - 1):
         W.append(create_weights_for_layer(hidden_layers_neuron_count[hidden_layer] + bias,
                                           hidden_layers_neuron_count[hidden_layer + 1]))
 
-    W.append(create_weights_for_output_layer(hidden_layers_neuron_count[-1] + bias, label_count))
+    W.append(create_weights_for_output_layer(hidden_layers_neuron_count[-1] + bias, cu.label_count))
 
 
 def add_biases(matrix_to_enhance):
@@ -73,34 +63,30 @@ def update_weights(D, input_data, Z):
 
 
 def learn_network():
-    random.shuffle(training_data)
-    for training_row in training_data[:]:
-        training_data_matrix = np.matrix(data[training_row])
+    random.shuffle(cu.training_data)
+    for training_row in cu.training_data[:]:
+        training_data_matrix = np.matrix(cu.data[training_row])
         S, Z, F = feed_forward(training_data_matrix)
-        expected_answer = data_labels[training_row]
+        expected_answer = cu.data_labels[training_row]
         D = back_propagation(Z, F, expected_answer)
         update_weights(D, training_data_matrix, Z)
 
 
 def evaluate_training_data():
-    return evaluate_data(training_data)
-
-
-def evaluate_test_data():
-    return evaluate_data(test_data)
+    return evaluate_data(cu.training_data)
 
 
 def evaluate_validation_data():
-    return evaluate_data(validation_data)
+    return evaluate_data(cu.validation_data)
 
 
 def evaluate_data(data_set):
     error = 0.0
     correct_answers = 0
     for data_row in data_set:
-        data_matrix = np.matrix(data[data_row])
+        data_matrix = np.matrix(cu.data[data_row])
         _, Z, _ = feed_forward(data_matrix)
-        expected_answer = data_labels[data_row]
+        expected_answer = cu.data_labels[data_row]
         difference = (Z[-1] - expected_answer).A1
         row_error = sum(list(map(lambda x: pow(x, 2), difference)))
         error += row_error
@@ -110,9 +96,9 @@ def evaluate_data(data_set):
 
 
 def run():
-    read_data("iris.data")
-    normalize_and_scale_data()
-    generate_data_sets()
+    cu.read_data("iris.data")
+    cu.normalize_and_scale_data()
+    cu.generate_data_sets()
     initialize_network()
     for iteration in range(500000):
         learn_network()
@@ -121,11 +107,11 @@ def run():
             validation_error, validation_correct_answers = evaluate_validation_data()
             print(
                 "Iteration {0} error: {1:0.5f} ({2:0.2f}%) {3:0.5f} ({4:0.2f}%)".format(iteration,
-                                                                                                             training_error,
-                                                                                                             training_correct_answers,
-                                                                                                             validation_error,
-                                                                                                             validation_correct_answers
-                                                                                                             ))
+                                                                                        training_error,
+                                                                                        training_correct_answers,
+                                                                                        validation_error,
+                                                                                        validation_correct_answers
+                                                                                        ))
             sys.stdout.flush()
 
 
@@ -135,35 +121,6 @@ def get_initialized_deltas():
         D.append(np.matrix(np.zeros((weights.shape[1] + 1, 1))))
     D.append(np.matrix(np.zeros((W[-1].shape[1], 1))))
     return D
-
-
-def read_data(data_file):
-    global data
-    f = open(data_file, "r")
-    for index, line in enumerate(f):
-        split_line = line.replace("\n", "").split(",")
-        data.append(split_line[:-1])
-        data_labels[index] = labels[split_line[-1:][0]]
-    data = np.array(data, dtype=np.float64)
-
-
-def normalize_and_scale_data():
-    means = np.mean(data, axis=0, dtype=np.float64)
-
-    std_deviations = np.subtract(np.amax(data, axis=0), np.amin(data, axis=0))
-    for column in range(data.shape[1]):
-        data[:, column] -= means[column]
-        data[:, column] /= std_deviations[column]
-
-
-def generate_data_sets():
-    global training_data, test_data, validation_data
-    data_count = data.shape[0]
-    indices = [i for i in range(data_count)]
-    random.shuffle(indices)
-    training_data = indices[0:int(0.7 * data_count)]
-    # test_data = indices[int(0.6 * data_count):int(0.6 * data_count) + int(0.2 * data_count)]
-    validation_data = indices[-int(0.3 * data_count):]
 
 
 def create_weights_for_input_layer(feature_count, first_hidden_layer_neuron_count):
